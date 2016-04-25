@@ -12,8 +12,9 @@
     var cnvs = canvasArray[0], ctx = canvasArray[1];
     game = init();
 
+    //spawns blocks
     function cubePush() {
-        var j = rand(3,3);
+        var j = rand(4,7);
         for(var i = 0; i < j; i++) {
             game.cubeArray.push(cubeObj());
         }
@@ -28,12 +29,14 @@
         }
     },false);
 
+    //moves blocks when user keys in left or right arrow
     function move(sign) {
         game.cubeArray.forEach(function(AE) {
             AE.x += sign * 3 * AE.y / cnvs.width;
         });
     }
-
+    //updates block position based off of current x,y and then splices extra blocks
+    //also redraws blocks and user's block
     function update() {
         var spliced = [];
         ctx.clearRect(0, 0, cnvs.width, cnvs.height);
