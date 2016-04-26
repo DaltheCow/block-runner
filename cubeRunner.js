@@ -14,7 +14,11 @@
       return [canvas,canvas.getContext('2d')];
     }
 
-    canvasArray = createCanvas(300,500);
+    var score = document.createElement('p');
+    score.innerHTML = 0;
+    document.body.appendChild(score);
+
+    var canvasArray = createCanvas(300,500);
     var cnvs = canvasArray[0], ctx = canvasArray[1];
     game = init();
 
@@ -36,7 +40,10 @@
         addEventListener('keydown', function(evt) {
             if (evt.keyCode === 37 && game.leftCnt === 0) {
                 game.leftIntvl = intervalFunc(move,1);
-                game.userTurn.x -= 10;
+                if (game.rightCnt)
+                    game.userTurn = 'straight';
+                else
+                    game.userTurn = 'left';
                 /*if (game.rightCnt) {
                     game.userTurn.x -= 10;
                 }*/
@@ -44,7 +51,10 @@
             }
             if (evt.keyCode === 39 && game.rightCnt === 0) {
                 game.rightIntvl = intervalFunc(move,-1);
-                game.userTurn.x += 10;
+                if (game.leftCnt)
+                    game.userTurn = 'straight';
+                else
+                    game.userTurn = 'right';
                 /*if (game.leftCnt) {
                     game.userTurn.x += 10;
                 }*/
@@ -55,12 +65,18 @@
         addEventListener('keyup', function(evt) {
             if (evt.keyCode === 37) {
                 clearInterval(game.leftIntvl);
-                game.userTurn.x = game.user.x;
+                if (game.rightCnt)
+                    game.userTurn = 'right';
+                else
+                    game.userTurn = 'straight';
                 game.leftCnt = 0;
             }
             if (evt.keyCode === 39) {
                 clearInterval(game.rightIntvl);
-                game.userTurn.x = game.user.x;
+                if (game.leftCnt)
+                    game.userTurn = 'left';
+                else
+                    game.userTurn = 'straight';
                 game.rightCnt = 0;
             }
         },false);
@@ -99,7 +115,7 @@
         ctx.clearRect(0, 0, cnvs.width, cnvs.height);
         //draw crappy shadows first
         game.cubeArray.forEach(function(AE) {
-            shadow = -xSpdByPos(AE, 6, 1) * AE.side;
+            shadow = -xSpdByPos(AE, 6, 1) * AE.side/2;
             drawShadow(AE,shadow);
         });
         game.cubeArray.forEach(function(AE,i) {
@@ -117,7 +133,8 @@
         spliced.forEach(function(AE) {
             game.cubeArray.splice(AE,1);
         });
-        drawUser(game.userTurn.x, game.userTurn.y);
+        drawUser();
+        drawScore();
         if (collisions()) {
             clearInterval(game.intervalCubes);
             clearInterval(game.intervalUpdate);
@@ -125,9 +142,12 @@
         }
     }
 
+    function drawScore() {
+        score.innerHTML = game.score;
+    }
 
-    function collisions() {
-        U = game.userTurn;
+    function collisions(AE) {
+        U = returnUserDir();
         if (game.cubeArray.some(function(AE) {
             if (AE.x < U.x && AE.x + AE.side > U.x && AE.y < U.y && AE.y + AE.side > U.y)
                 return true;
@@ -137,10 +157,26 @@
             return false;
     }
 
-    function drawUser(startX,startY) {
+    function returnUserDir() {
+        if (game.userTurn === 'straight')
+            return {x: game.user.x, y: game.user.y};
+        else if (game.userTurn === 'right')
+            return {x: game.user.x + 10, y: game.user.y};
+        else
+            return {x: game.user.x - 10, y: game.user.y}
+    }
+
+    function drawUser() {
         ctx.fillStyle = 'blue';
         ctx.beginPath();
-        ctx.moveTo(startX,startY);
+
+        if (game.userTurn === 'straight')
+            ctx.moveTo(game.user.x, game.user.y);
+        else if (game.userTurn === 'right')
+            ctx.moveTo(game.user.x + 10, game.user.y);
+        else
+            ctx.moveTo(game.user.x - 10, game.user.y);
+
         ctx.lineTo(game.user.x + 4, cnvs.height);
         ctx.lineTo(game.user.x - 4, cnvs.height);
         ctx.fill();
@@ -152,18 +188,26 @@
     }
 
     function drawShadow(elem,shadow) {
-        var sign = 1;
+        var sign = 1, g = game.speed;
         if (shadow < 0) {
             sign = 0;
         }
+
         ctx.fillStyle = 'grey';
         ctx.beginPath();
-        ctx.moveTo(elem.x, elem.y + elem.side + 3);
-        ctx.lineTo(elem.x + elem.side, elem.y + elem.side + 3);
-        if (shadow)
-            ctx.lineTo(elem.x + elem.side/2 + shadow, elem.y + 3);
-        else
-            ctx.lineTo(elem.x + shadow - elem.side/2, elem.y + 3);
+        //+g is because shadows weren't getting draw where they should be
+        if (sign){
+            ctx.moveTo(elem.x, elem.y + elem.side + g);
+            ctx.lineTo(elem.x + elem.side, elem.y + elem.side + g);
+            ctx.lineTo(elem.x + shadow + elem.side, elem.y + elem.side/3 + g);
+            ctx.lineTo(elem.x + shadow, elem.y + elem.side/3 + g);
+        }
+        else{
+            ctx.moveTo(elem.x + elem.side, elem.y + elem.side + g);
+            ctx.lineTo(elem.x, elem.y + elem.side + g);
+            ctx.lineTo(elem.x + shadow, elem.y + elem.side/3 + g);
+            ctx.lineTo(elem.x + shadow + elem.side, elem.y + elem.side/3 + g);
+        }
         ctx.fill();
     }
 
@@ -173,7 +217,7 @@
                   speed: 3,
                   moveSpd: 3,
                   user: {x: cnvs.width/2, y: cnvs.height - 20},
-                  userTurn: {x: cnvs.width/2, y: cnvs.height - 20},
+                  userTurn: 'straight',
                   density: {size: 6, range: 13},
                   intervalCubes: setInterval(function()
                     { cubePush(values.density.size, 
@@ -184,7 +228,7 @@
                   intervalSpeed: setInterval(function() {
                     values.speed += .05;
                     values.moveSpd += .01;
-                    values.score ++;
+                    values.score +=1;
                   },2000,false),
                   leftIntvl: null,
                   rightIntvl: null,
